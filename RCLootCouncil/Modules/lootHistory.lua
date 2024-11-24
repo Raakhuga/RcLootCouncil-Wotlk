@@ -5,6 +5,7 @@
 
 local addon = LibStub("AceAddon-3.0"):GetAddon("RCLootCouncil")
 local LootHistory = addon:NewModule("RCLootHistory")
+local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 local L = LibStub("AceLocale-3.0"):GetLocale("RCLootCouncil")
 local lootDB, scrollCols, data, db, numLootWon;
 --[[ data structure:
@@ -342,7 +343,49 @@ function LootHistory:GetFrame()
 	b3:SetScript("OnEnter", function() addon:CreateTooltip(L["Deselect responses to filter them"]) end)
 	b3:SetScript("OnLeave", addon.HideTooltip)
 	f.filter = b3
-	Lib_UIDropDownMenu_Initialize(b3, self.FilterMenu)
+  Lib_UIDropDownMenu_Initialize(b3, self.FilterMenu)
+
+  -- That's my BIS exporter
+  local exporter = AceGUI:Create("Frame")
+  exporter:SetTitle(L["Exporter"])
+  exporter:SetLayout("Flow")
+  exporter:Hide()
+  local Box = AceGUI:Create("MultiLineEditBox")
+  Box:SetNumLines(30)
+  Box:DisableButton(true)
+  Box:SetWidth(800)
+  Box:SetLabel(L["Data exporter"])
+  Box.editBox:HighlightText()
+  exporter:AddChild(Box)
+
+  local b4 = addon:CreateButton(L["TMBIS_exporter"], f.content)
+  b4:SetPoint("RIGHT", b3, "LEFT", -10, 0)
+  b4:SetWidth(150)
+  b4:SetScript("OnClick", function(self)
+    Box:SetText(" ")
+    exporter:Show()
+    local csvData = "character,date,itemID,officerNote\n"
+    for i=1,table.getn(f.rows),1
+    do
+      local re = "Hitem:([0-9]*)"
+      local row = f.rows[i]
+      if (row.cols[5].args.response ~= "Disenchant") then
+        local character = row.name
+        local day = string.sub(row.date,1,2)
+        local month = string.sub(row.date,4,5)
+        local year = string.sub(row.date,7,8)
+        local itemId = string.match(row.cols[3].args[1], re)
+        csvData = csvData .. character .. "," .. month.. "-" .. day .. "-" .. "20" .. year .. "," .. itemId .. ","
+        if row.cols[5].args.response == "Offspec/Greed" then csvData = csvData .. "OS" end
+        csvData = csvData .. "\n"
+      end
+    end
+    Box:SetText(csvData)
+    Box.editBox:HighlightText()
+  end)
+  b4:SetScript("OnEnter", function() addon:CreateTooltip(L["Export current loot as CSV"]) end)
+  b4:SetScript("OnLeave", addon.HideTooltip)
+  f.thatsmyBis = b4
 
 	-- Set a proper width
 	f:SetWidth(st.frame:GetWidth() + 20)
@@ -383,8 +426,6 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, dat, cols, row, realrow
 	tip:Show()
 	tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
 end
-
-
 
 ---------------------------------------------------
 -- Dropdowns
